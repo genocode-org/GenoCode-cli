@@ -18,5 +18,8 @@
   ],
   "dependencies": {
     "@genocode/core": "0.0.0"
+  },
+  "bin": {
+    "genie": "./dist/main.js"
   }
 }
