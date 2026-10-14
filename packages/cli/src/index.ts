@@ -1,8 +1,9 @@
-// The genie command line: check, format, genes and build. Translate and render come later.
+// The genie command line: check, format, genes, build and render. Translate comes later.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import {
   build,
+  buildBackground,
   check,
   formatDiagnostic,
   formatText,
@@ -10,19 +11,21 @@ import {
   type Diagnostic,
   type LineMap,
 } from "@genocode/core";
+import { rasterize } from "@genocode/render";
+import { encodePng } from "./png.js";
 
 export interface Io {
   out(text: string): void;
   err(text: string): void;
   read(path: string): string;
-  write(path: string, text: string): void;
+  write(path: string, data: string | Uint8Array): void;
 }
 
 export const nodeIo: Io = {
   out: (t) => process.stdout.write(t),
   err: (t) => process.stderr.write(t),
   read: (p) => readFileSync(p, "utf8"),
-  write: (p, t) => writeFileSync(p, t),
+  write: (p, data) => writeFileSync(p, data),
 };
 
 const USAGE = `Usage: genie <command> [options] <files…>
@@ -34,6 +37,8 @@ Commands:
                               --check only reports files that aren't formatted
   genes <file>                list a creature's genes
   build [--json] <file>       build a creature and report its shapes
+  render [--size=N] <file> <out.png>
+                              draw a creature, in its rest pose, as an N×N picture (default 512)
 `;
 
 function report(io: Io, file: string, lines: LineMap, diagnostics: Diagnostic[]): boolean {
@@ -44,7 +49,9 @@ function report(io: Io, file: string, lines: LineMap, diagnostics: Diagnostic[])
 /** Runs the command line and returns the exit code. */
 export function run(argv: string[], io: Io = nodeIo): number {
   const [command, ...rest] = argv;
-  const flags = new Set(rest.filter((a) => a.startsWith("--")));
+  const flags = new Set(rest.filter((a) => a.startsWith("--")).map((a) => a.split("=")[0]!));
+  const option = (name: string): string | undefined =>
+    rest.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
   const files = rest.filter((a) => !a.startsWith("--"));
   const read = (file: string): string | undefined => {
     try {
@@ -148,6 +155,32 @@ export function run(argv: string[], io: Io = nodeIo): number {
           `${built.shapes.length} shape${built.shapes.length === 1 ? "" : "s"}${summary ? `: ${summary}` : ""}\n`,
         );
       }
+      return built.ok ? 0 : 1;
+    }
+
+    case "render": {
+      const [file, out] = files;
+      if (out === undefined) {
+        io.err(`genie render: give a creature file and the picture to write\n\n${USAGE}`);
+        return 1;
+      }
+      const size = Number(option("size") ?? 512);
+      if (!Number.isInteger(size) || size < 16 || size > 8192) {
+        io.err("genie render: --size must be a whole number from 16 to 8192\n");
+        return 1;
+      }
+      const text = read(file!);
+      if (text === undefined) return 1;
+      const result = check(text);
+      if (!report(io, file!, result.lines, result.diagnostics)) return 1;
+      const built = build(result);
+      report(io, file!, result.lines, built.diagnostics);
+      const image = rasterize(built.shapes, {
+        width: size,
+        height: size,
+        background: buildBackground(result).fill,
+      });
+      io.write(out, encodePng(image.width, image.height, image.data));
       return built.ok ? 0 : 1;
     }
 

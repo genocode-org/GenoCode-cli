@@ -19,8 +19,8 @@ function memoryIo(
       if (text === undefined) throw new Error("missing");
       return text;
     },
-    write: (p: string, t: string) => {
-      files[p] = t;
+    write: (p: string, t: string | Uint8Array) => {
+      files[p] = typeof t === "string" ? t : `<${t.length} bytes>`;
     },
   };
   return io;
@@ -56,6 +56,20 @@ describe("genie", () => {
     const io = memoryIo({ "good.genie": GOOD });
     expect(run(["build", "good.genie"], io)).toBe(0);
     expect(io.stdout).toBe("2 shapes: 2 balls\n");
+  });
+
+  it("renders pictures", () => {
+    const io = memoryIo({ "good.genie": GOOD });
+    let written: Uint8Array | undefined;
+    io.write = (_p, data) => {
+      written = data as Uint8Array;
+    };
+    expect(run(["render", "--size=32", "good.genie", "out.png"], io)).toBe(0);
+    expect(Array.from(written!.slice(0, 8))).toEqual([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
+    expect(run(["render", "--size=3", "good.genie", "out.png"], io)).toBe(1);
+    expect(run(["render", "good.genie"], io)).toBe(1);
   });
 
   it("explains how to use it", () => {
