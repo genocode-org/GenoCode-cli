@@ -1,24 +1,30 @@
-// The genie command line: check, format, genes, build and render. Translate comes later.
+// The genie command line: check, format, genes, build, render and create. Translate comes later.
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import {
   build,
-  buildBackground,
   check,
   formatDiagnostic,
   formatText,
-  formatValue,
   type Diagnostic,
   type LineMap,
 } from "@genocode/core";
-import { rasterize } from "@genocode/render";
-import { encodePng } from "./png.js";
+import {
+  describeGenes,
+  designCreature,
+  renderPng,
+  type DesignOptions,
+  type DesignResult,
+} from "@genocode/agent";
 
 export interface Io {
   out(text: string): void;
   err(text: string): void;
   read(path: string): string;
   write(path: string, data: string | Uint8Array): void;
+  exists(path: string): boolean;
+  /** Designs a creature, for `genie create`. */
+  design(options: DesignOptions): Promise<DesignResult>;
 }
 
 export const nodeIo: Io = {
@@ -26,6 +32,8 @@ export const nodeIo: Io = {
   err: (t) => process.stderr.write(t),
   read: (p) => readFileSync(p, "utf8"),
   write: (p, data) => writeFileSync(p, data),
+  exists: (p) => existsSync(p),
+  design: designCreature,
 };
 
 const USAGE = `Usage: genie <command> [options] <files…>
@@ -37,8 +45,13 @@ Commands:
                               --check only reports files that aren't formatted
   genes <file>                list a creature's genes
   build [--json] <file>       build a creature and report its shapes
-  render [--size=N] <file> <out.png>
-                              draw a creature, in its rest pose, as an N×N picture (default 512)
+  render [--size=N] [--time=T] <file> <out.png>
+                              draw a creature as an N×N picture (default 512) at T seconds
+                              (default 0, the rest pose)
+  create [--out=FILE] [--force] [--model=M] <description…>
+                              design a creature from a description with Claude, then save it
+                              as FILE (default <Name>.genie). Needs ANTHROPIC_API_KEY or
+                              \`ant auth login\`
 `;
 
 function report(io: Io, file: string, lines: LineMap, diagnostics: Diagnostic[]): boolean {
@@ -46,8 +59,8 @@ function report(io: Io, file: string, lines: LineMap, diagnostics: Diagnostic[])
   return !diagnostics.some((d) => d.severity === "error");
 }
 
-/** Runs the command line and returns the exit code. */
-export function run(argv: string[], io: Io = nodeIo): number {
+/** Runs the command line and returns the exit code (a promise of it, for `create`). */
+export function run(argv: string[], io: Io = nodeIo): number | Promise<number> {
   const [command, ...rest] = argv;
   const flags = new Set(rest.filter((a) => a.startsWith("--")).map((a) => a.split("=")[0]!));
   const option = (name: string): string | undefined =>
@@ -67,7 +80,9 @@ export function run(argv: string[], io: Io = nodeIo): number {
     return command === undefined ? 1 : 0;
   }
   if (files.length === 0) {
-    io.err(`genie ${command}: no files given\n\n${USAGE}`);
+    io.err(
+      `genie ${command}: ${command === "create" ? "no description given" : "no files given"}\n\n${USAGE}`,
+    );
     return 1;
   }
 
@@ -120,19 +135,7 @@ export function run(argv: string[], io: Io = nodeIo): number {
       if (text === undefined) return 1;
       const result = check(text);
       if (!report(io, file, result.lines, result.diagnostics)) return 1;
-      for (const g of result.genes) {
-        let range = "";
-        if (g.options) range = ` from [${g.options.map(formatValue).join(", ")}]`;
-        else if (g.min !== undefined && g.max !== undefined) {
-          range = ` in ${formatValue(g.min)}..${formatValue(g.max)}`;
-          if (g.hue) range += g.hue.whole ? ", any hue" : `, hue ${g.hue.start}+${g.hue.length}°`;
-          if (g.step !== undefined) range += ` step ${g.step}`;
-          if (g.log) range += " log";
-        }
-        io.out(
-          `${g.fullName} = ${formatValue(g.value)}${range}${g.description ? `  // ${g.description}` : ""}\n`,
-        );
-      }
+      for (const line of describeGenes(result.genes)) io.out(line + "\n");
       return 0;
     }
 
@@ -169,23 +172,74 @@ export function run(argv: string[], io: Io = nodeIo): number {
         io.err("genie render: --size must be a whole number from 16 to 8192\n");
         return 1;
       }
+      const time = Number(option("time") ?? 0);
+      if (!Number.isFinite(time) || time < 0) {
+        io.err("genie render: --time must be a number of seconds, 0 or more\n");
+        return 1;
+      }
       const text = read(file!);
       if (text === undefined) return 1;
       const result = check(text);
       if (!report(io, file!, result.lines, result.diagnostics)) return 1;
-      const built = build(result);
+      const { png, built } = renderPng(result, { size, time });
       report(io, file!, result.lines, built.diagnostics);
-      const image = rasterize(built.shapes, {
-        width: size,
-        height: size,
-        background: buildBackground(result).fill,
-      });
-      io.write(out, encodePng(image.width, image.height, image.data));
+      io.write(out, png);
       return built.ok ? 0 : 1;
     }
+
+    case "create":
+      return create(files.join(" "), io, {
+        out: option("out"),
+        model: option("model"),
+        force: flags.has("--force"),
+      });
 
     default:
       io.err(`genie: unknown command \`${command}\`\n\n${USAGE}`);
       return 1;
   }
+}
+
+/** `genie create`: designs a creature with Claude and saves it. */
+async function create(
+  description: string,
+  io: Io,
+  options: { out: string | undefined; model: string | undefined; force: boolean },
+): Promise<number> {
+  if (options.out !== undefined && io.exists(options.out) && !options.force) {
+    io.err(`genie create: ${options.out} already exists; use --force to replace it\n`);
+    return 1;
+  }
+  let result: DesignResult;
+  try {
+    result = await io.design({
+      description,
+      ...(options.model !== undefined && { model: options.model }),
+      onProgress: (p) => io.err(p.kind === "text" ? `${p.text}\n` : `  [${p.name}] ${p.detail}\n`),
+    });
+  } catch (e) {
+    io.err(`genie create: ${e instanceof Error ? e.message : String(e)}\n`);
+    // API errors carry an HTTP status; missing credentials fail before any request, without one.
+    const status = (e as { status?: unknown }).status;
+    if (status === undefined || status === 401 || status === 403) {
+      io.err("It needs Claude API credentials: set ANTHROPIC_API_KEY, or run `ant auth login`.\n");
+    }
+    return 1;
+  }
+  const creature = result.creature;
+  if (creature === undefined) {
+    io.err(`genie create: no creature was saved (the agent stopped: ${result.stopReason})\n`);
+    if (result.summary) io.out(result.summary + "\n");
+    return 1;
+  }
+  let path = options.out;
+  if (path === undefined) {
+    // Never replace a file without being asked: number the new one instead.
+    path = `${creature.name}.genie`;
+    for (let n = 2; io.exists(path) && !options.force; n++) path = `${creature.name}-${n}.genie`;
+  }
+  io.write(path, creature.source);
+  for (const w of creature.warnings) io.err(w.replace(/^creature:/, `${path}:`) + "\n");
+  io.out(`${result.summary}\n\nSaved ${path}\n`);
+  return 0;
 }

@@ -2,7 +2,7 @@
   "name": "@genocode/cli",
   "version": "0.0.0",
   "private": true,
-  "description": "The genie command line: check, format, render and translate.",
+  "description": "The genie command line: check, format, render, create and translate.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,6 +17,7 @@
     "dist"
   ],
   "dependencies": {
+    "@genocode/agent": "0.0.0",
     "@genocode/core": "0.0.0",
     "@genocode/render": "0.0.0"
   },
