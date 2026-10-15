@@ -13,9 +13,6 @@ genie build Flower.genie            # build a creature and report its shapes (--
 genie render Flower.genie out.png   # draw it (--size=N, default 512; --time=T seconds)
 ```
 
-`genie create`, which designs a creature from a description with Claude, will come back when
-[GenoCode-agent](https://github.com/genocode-org/GenoCode-agent) is picked up again.
-
 ## Development
 
 You need Node.js 22 or later (see `.nvmrc`). The language and the renderer come from npm as
