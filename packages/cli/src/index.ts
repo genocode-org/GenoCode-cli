@@ -16,6 +16,7 @@ import {
   type DesignOptions,
   type DesignResult,
 } from "@genocode/agent";
+import { banner } from "./banner.js";
 
 export interface Io {
   out(text: string): void;
@@ -25,6 +26,8 @@ export interface Io {
   exists(path: string): boolean;
   /** Designs a creature, for `genie create`. */
   design(options: DesignOptions): Promise<DesignResult>;
+  /** Standard output is a terminal that shows colour. */
+  colour?: boolean;
 }
 
 export const nodeIo: Io = {
@@ -34,6 +37,7 @@ export const nodeIo: Io = {
   write: (p, data) => writeFileSync(p, data),
   exists: (p) => existsSync(p),
   design: designCreature,
+  colour: process.stdout.isTTY === true && process.env["NO_COLOR"] === undefined,
 };
 
 const USAGE = `Usage: genie <command> [options] <files…>
@@ -76,7 +80,8 @@ export function run(argv: string[], io: Io = nodeIo): number | Promise<number> {
   };
 
   if (command === undefined || command === "help" || command === "--help") {
-    io.out(USAGE);
+    io.out(`${banner(io.colour ?? false)}
+${USAGE}`);
     return command === undefined ? 1 : 0;
   }
   if (files.length === 0) {

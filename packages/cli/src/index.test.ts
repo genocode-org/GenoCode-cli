@@ -135,10 +135,19 @@ describe("genie", () => {
     expect(io.stderr).toContain("no description given");
   });
 
+  it("colours the banner only for a colour terminal", () => {
+    const io = memoryIo({});
+    io.colour = true;
+    expect(run(["help"], io)).toBe(0);
+    expect(io.stdout).toContain("[38;2;");
+  });
+
   it("explains how to use it", () => {
     const io = memoryIo({});
     expect(run([], io)).toBe(1);
     expect(io.stdout).toContain("Usage: genie");
+    expect(io.stdout).toContain("code, breed and share creatures");
+    expect(io.stdout).not.toContain("[");
     expect(run(["check"], io)).toBe(1);
     expect(run(["check", "missing.genie"], io)).toBe(1);
     expect(io.stderr).toContain("can't read missing.genie");
