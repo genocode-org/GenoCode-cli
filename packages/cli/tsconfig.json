@@ -7,16 +7,5 @@
     "types": ["node"]
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts"],
-  "references": [
-    {
-      "path": "../core"
-    },
-    {
-      "path": "../render"
-    },
-    {
-      "path": "../agent"
-    }
-  ]
+  "exclude": ["src/**/*.test.ts"]
 }

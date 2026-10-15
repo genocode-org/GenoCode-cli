@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+.vite/
+*.vsix
+.DS_Store
+
+# Files in the original DancerDNA formats stay outside this repository (see CREDITS.md).
+*.pop
+*.stl
+*.dna
+
