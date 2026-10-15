@@ -18,8 +18,8 @@
   ],
   "dependencies": {
     "@genocode/agent": "0.0.0",
-    "@genocode/core": "0.0.0",
-    "@genocode/render": "0.0.0"
+    "@genocode/core": "0.1.0",
+    "@genocode/render": "0.1.0"
   },
   "bin": {
     "genie": "./dist/main.js"
