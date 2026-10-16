@@ -1,11 +1,18 @@
-// The genie command line: check, format, genes, build and render. Translate comes later.
+// The genie command line: check, format, genes, build and render, and mutate, breed and morph
+// creatures. Translate comes later.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import {
+  breed,
   build,
   check,
   formatDiagnostic,
   formatText,
+  morph,
+  mulberry32,
+  mutate,
+  writeGenes,
+  type CheckResult,
   type Diagnostic,
   type LineMap,
 } from "@genocode/core";
@@ -41,6 +48,16 @@ Commands:
   render [--size=N] [--time=T] <file> <out.png>
                               draw a creature as an N×N picture (default 512) at T seconds
                               (default 0, the rest pose)
+  mutate [--strength=S] [--seed=N] [--lock=a,b] <file> [out.genie]
+                              a variation of a creature: genes move by up to S of their
+                              range (0 to 1, default 0.25)
+  breed [--seed=N] [--lock=a,b] <a> <b> [out.genie]
+                              a child of two creatures, with A's code
+  morph [--at=T] <a> <b> [out.genie]
+                              the creature T of the way from A to B (0 to 1, default 0.5)
+
+mutate, breed and morph print the new creature, or write it to out.genie. --seed makes
+the result repeatable, and --lock keeps the named genes as they are.
 `;
 
 function report(io: Io, file: string, lines: LineMap, diagnostics: Diagnostic[]): boolean {
@@ -173,6 +190,61 @@ ${USAGE}`);
       report(io, file!, result.lines, built.diagnostics);
       io.write(out, png);
       return built.ok ? 0 : 1;
+    }
+
+    case "mutate":
+    case "breed":
+    case "morph": {
+      const inputs = command === "mutate" ? 1 : 2;
+      if (files.length < inputs) {
+        io.err(
+          `genie ${command}: give ${inputs === 1 ? "a creature file" : "two creature files"}\n\n${USAGE}`,
+        );
+        return 1;
+      }
+      const out = files[inputs];
+      const strength = Number(option("strength") ?? 0.25);
+      if (!(strength >= 0 && strength <= 1)) {
+        io.err("genie mutate: --strength must be a number from 0 to 1\n");
+        return 1;
+      }
+      const at = Number(option("at") ?? 0.5);
+      if (!(at >= 0 && at <= 1)) {
+        io.err("genie morph: --at must be a number from 0 to 1\n");
+        return 1;
+      }
+      const seed = option("seed");
+      if (seed !== undefined && !/^\d+$/.test(seed)) {
+        io.err(`genie ${command}: --seed must be a whole number\n`);
+        return 1;
+      }
+      const random = seed === undefined ? Math.random : mulberry32(Number(seed));
+      const locked = new Set(option("lock")?.split(",").filter(Boolean));
+
+      const programs: CheckResult[] = [];
+      for (const file of files.slice(0, inputs)) {
+        const text = read(file);
+        if (text === undefined) return 1;
+        const result = check(text);
+        if (!report(io, file, result.lines, result.diagnostics)) return 1;
+        programs.push(result);
+      }
+      const [a, b] = programs as [CheckResult, CheckResult | undefined];
+      let program = a;
+      let values;
+      if (command === "mutate") {
+        values = mutate(a.genes, undefined, { strength, random, locked });
+      } else if (command === "breed") {
+        values = breed({ genes: a.genes }, { genes: b!.genes }, { random, locked });
+      } else {
+        const m = morph({ genes: a.genes }, { genes: b!.genes }, at);
+        if (m.from === "b") program = b!;
+        values = m.values;
+      }
+      const text = writeGenes(program, values);
+      if (out === undefined) io.out(text);
+      else io.write(out, text);
+      return 0;
     }
 
     default:

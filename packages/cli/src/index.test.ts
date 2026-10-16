@@ -104,4 +104,37 @@ describe("genie", () => {
     expect(run(["check", "missing.genie"], io)).toBe(1);
     expect(io.stderr).toContain("can't read missing.genie");
   });
+
+  it("mutates a creature, repeatably with --seed, keeping locked genes", () => {
+    const source = "creature T\ngene a = 5 in 0..10\ngene b = 5 in 0..10\nlay\n";
+    const io = memoryIo({ "t.genie": source });
+    const args = ["mutate", "--strength=1", "--seed=7", "--lock=b", "t.genie"];
+    expect(run([...args, "one.genie"], io)).toBe(0);
+    expect(run([...args, "two.genie"], io)).toBe(0);
+    expect(io.files["one.genie"]).toBe(io.files["two.genie"]);
+    expect(io.files["one.genie"]).toMatch(/gene b = 5 +in 0..10/);
+    expect(run(["check", "one.genie"], io)).toBe(0);
+    expect(run(["mutate", "--strength=2", "t.genie"], io)).toBe(1);
+  });
+
+  it("breeds two creatures, with the first one's code", () => {
+    const io = memoryIo({
+      "a.genie": "creature A\ngene n = 0 in 0..10\nlay\n",
+      "b.genie": "creature B\ngene n = 10 in 0..10\nshape cube\nlay\n",
+    });
+    expect(run(["breed", "--seed=1", "a.genie", "b.genie"], io)).toBe(0);
+    expect(io.stdout).toMatch(/^creature A\n/);
+    expect(run(["breed", "a.genie"], io)).toBe(1);
+  });
+
+  it("morphs between two creatures", () => {
+    const io = memoryIo({
+      "a.genie": "creature A\ngene n = 0 in 0..10\nlay\n",
+      "b.genie": "creature B\ngene n = 10 in 0..10\nshape cube\nlay\n",
+    });
+    expect(run(["morph", "--at=0.25", "a.genie", "b.genie", "m.genie"], io)).toBe(0);
+    expect(io.files["m.genie"]).toBe("creature A\ngene n = 2.5 in 0..10\nlay\n");
+    expect(run(["morph", "--at=0.75", "a.genie", "b.genie", "m.genie"], io)).toBe(0);
+    expect(io.files["m.genie"]).toContain("creature B\ngene n = 7.5 in 0..10");
+  });
 });
