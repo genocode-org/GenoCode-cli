@@ -1,5 +1,5 @@
-// The genie command line: check, format, genes, build and render, and mutate, breed and morph
-// creatures. Translate comes later.
+// The genie command line: check, format, genes, build and render, mutate, breed and morph
+// creatures, and translate old Pop creatures.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import {
@@ -17,12 +17,16 @@ import {
   type LineMap,
 } from "@genocode/core";
 import { banner } from "./banner.js";
+import { PopError, readPopulation } from "./pop.js";
+import { translatePopulation } from "./translate.js";
 import { describeGenes, renderPng } from "./tools.js";
 
 export interface Io {
   out(text: string): void;
   err(text: string): void;
   read(path: string): string;
+  /** Reads a file's bytes. Without it, files are read as text. */
+  readBytes?(path: string): Uint8Array;
   write(path: string, data: string | Uint8Array): void;
   /** Standard output is a terminal that shows colour. */
   colour?: boolean;
@@ -32,6 +36,7 @@ export const nodeIo: Io = {
   out: (t) => process.stdout.write(t),
   err: (t) => process.stderr.write(t),
   read: (p) => readFileSync(p, "utf8"),
+  readBytes: (p) => readFileSync(p),
   write: (p, data) => writeFileSync(p, data),
   colour: process.stdout.isTTY === true && process.env["NO_COLOR"] === undefined,
 };
@@ -55,6 +60,10 @@ Commands:
                               a child of two creatures, with A's code
   morph [--at=T] <a> <b> [out.genie]
                               the creature T of the way from A to B (0 to 1, default 0.5)
+
+  translate <file.pop> [out.genie]
+                              a rough GenoCode version of a DancerDNA population: one
+                              creature, with the other members as variants
 
 mutate, breed and morph print the new creature, or write it to out.genie. --seed makes
 the result repeatable, and --lock keeps the named genes as they are.
@@ -244,6 +253,39 @@ ${USAGE}`);
       const text = writeGenes(program, values);
       if (out === undefined) io.out(text);
       else io.write(out, text);
+      return 0;
+    }
+
+    case "translate": {
+      const [file, out] = files as [string, string | undefined];
+      let bytes: Uint8Array;
+      try {
+        bytes = io.readBytes ? io.readBytes(file) : new TextEncoder().encode(io.read(file));
+      } catch {
+        io.err(`genie: can't read ${file}\n`);
+        return 1;
+      }
+      const base = file.split(/[\\/]/).pop()!;
+      let translation;
+      try {
+        const population = readPopulation(bytes);
+        translation = translatePopulation(base.replace(/\.\w+$/, ""), population.genomes, base);
+      } catch (e) {
+        if (!(e instanceof PopError)) throw e;
+        io.err(`genie translate: ${file}: ${e.message}\n`);
+        return 1;
+      }
+      for (const w of translation.warnings) io.err(`${file}: ${w}\n`);
+      const result = check(translation.text);
+      const problems = result.diagnostics.length;
+      if (problems > 0) {
+        io.err(
+          `${file}: the translation has ${problems} problem${problems === 1 ? "" : "s"} to fix by hand:\n`,
+        );
+        report(io, out ?? "(output)", result.lines, result.diagnostics);
+      }
+      if (out === undefined) io.out(translation.text);
+      else io.write(out, translation.text);
       return 0;
     }
 

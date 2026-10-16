@@ -14,7 +14,16 @@ genie render Flower.genie out.png   # draw it (--size=N, default 512; --time=T s
 genie mutate Flower.genie New.genie # a variation (--strength=S, --seed=N, --lock=a,b)
 genie breed A.genie B.genie C.genie # a child of two creatures, with A's code
 genie morph --at=0.3 A.genie B.genie M.genie  # the creature 30% of the way from A to B
+genie translate Cobra.pop Cobra.genie          # a DancerDNA population as GenoCode
 ```
+
+**Translating DancerDNA creatures.** `genie translate` turns a DancerDNA (1999) population file
+into one GenoCode creature: the first member's program, with its genes named, and every other
+member as a `variant`. The result builds the same shapes in the same colours as the original, and
+keeps Pop's quirks to do so: turns on a mirrored turtle go through `pop_turn`, and colour spaces
+blend hue in a straight line through `pop_blend`. It's a starting point for tidying by hand, so it
+keeps the original's structure and marks what it couldn't translate (such as textures) with
+`// TODO` comments, which it also lists as it runs. No DancerDNA files are included here.
 
 ## Development
 

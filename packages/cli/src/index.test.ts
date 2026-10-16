@@ -137,4 +137,17 @@ describe("genie", () => {
     expect(run(["morph", "--at=0.75", "a.genie", "b.genie", "m.genie"], io)).toBe(0);
     expect(io.files["m.genie"]).toContain("creature B\ngene n = 7.5 in 0..10");
   });
+
+  it("translates a Pop population into one creature with variants", () => {
+    const genome = (v: string) =>
+      `genome dancer { prog func void main(); func void main() { data num reach = [${v}]:[0]:[3]; forward(reach); lay(); } }`;
+    const pop = `pop dancers {\nend\nindi dancer { ${genome("1")} }\nindi dancer { ${genome("2")} }\n}\n`;
+    const io = memoryIo({ "Worm.pop": pop });
+    expect(run(["translate", "Worm.pop", "Worm.genie"], io)).toBe(0);
+    expect(io.files["Worm.genie"]).toContain("creature Worm\n");
+    expect(io.files["Worm.genie"]).toContain("gene reach = 1 in 0..3");
+    expect(io.files["Worm.genie"]).toContain("variant member_2 { reach = 2 }");
+    expect(run(["check", "Worm.genie"], io)).toBe(0);
+    expect(run(["translate", "missing.pop"], io)).toBe(1);
+  });
 });
