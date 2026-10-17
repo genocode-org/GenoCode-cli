@@ -17,8 +17,8 @@
     "dist"
   ],
   "dependencies": {
-    "@genocode/core": "0.7.0",
-    "@genocode/render": "0.5.0"
+    "@genocode/core": "0.7.1",
+    "@genocode/render": "0.6.0"
   },
   "bin": {
     "genie": "./dist/main.js"
