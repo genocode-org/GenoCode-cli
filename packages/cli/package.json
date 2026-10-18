@@ -17,7 +17,7 @@
     "dist"
   ],
   "dependencies": {
-    "@genocode/core": "0.8.4",
+    "@genocode/core": "0.8.5",
     "@genocode/render": "0.8.0"
   },
   "bin": {
