@@ -87,6 +87,20 @@ describe("genie", () => {
     expect(pictures[2]).not.toEqual(pictures[0]);
   });
 
+  it("renders a pattern file as a ball wearing it", () => {
+    const ripples = (rings: number) =>
+      `pattern Ripples\n\nvalue picture {\n  value sin(r * ${rings} * 180) * 0.5 + 0.5\n}\n`;
+    const io = memoryIo({ "a.genie": ripples(8), "b.genie": ripples(16) });
+    const pictures: Uint8Array[] = [];
+    io.write = (_p, data) => {
+      pictures.push(data as Uint8Array);
+    };
+    expect(run(["render", "--size=32", "a.genie", "a.png"], io)).toBe(0);
+    expect(run(["render", "--size=32", "b.genie", "b.png"], io)).toBe(0);
+    expect(io.stderr).toBe("");
+    expect(pictures[1]).not.toEqual(pictures[0]);
+  });
+
   it("colours the banner only for a colour terminal", () => {
     const io = memoryIo({});
     io.colour = true;

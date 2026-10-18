@@ -52,7 +52,8 @@ Commands:
   build [--json] <file>       build a creature and report its shapes
   render [--size=N] [--time=T] <file> <out.png>
                               draw a creature as an N×N picture (default 512) at T seconds
-                              (default 0, the rest pose)
+                              (default 0, the rest pose); a pattern file is drawn as a
+                              ball wearing it
   mutate [--strength=S] [--seed=N] [--lock=a,b] <file> [out.genie]
                               a variation of a creature: genes move by up to S of their
                               range (0 to 1, default 0.25)
