@@ -3,8 +3,8 @@
 import {
   build,
   buildBackground,
-  check,
   formatValue,
+  patternOnBall,
   type BuildResult,
   type CheckResult,
   type GeneInfo,
@@ -40,7 +40,7 @@ export function renderPng(
   program: CheckResult,
   options: RenderOptions = {},
 ): { png: Uint8Array; built: BuildResult } {
-  if (program.file.kind === "pattern") program = ballWearing(program);
+  if (program.file.kind === "pattern") program = patternOnBall(program);
   const size = options.size ?? 512;
   const inputs = { time: options.time ?? 0 };
   const built = build(program, { inputs });
@@ -52,16 +52,3 @@ export function renderPng(
   return { png: encodePng(image.width, image.height, image.data), built };
 }
 
-/** A creature that's a ball wearing a pattern file's pattern. */
-function ballWearing(program: CheckResult): CheckResult {
-  const { name, items } = program.file;
-  const first = items[0];
-  const body = first ? program.text.slice(first.span.start).trimEnd() : "";
-  const block = body
-    .split("\n")
-    .map((l) => (l ? `  ${l}` : ""))
-    .join("\n");
-  return check(
-    `creature ${name}\n\npattern ${name} {\n${block}\n}\n\nshine 0.3\ntexture pattern(${name}, 200, 1)\nlay\n`,
-  );
-}
