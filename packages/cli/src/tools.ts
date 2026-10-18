@@ -51,4 +51,3 @@ export function renderPng(
   });
   return { png: encodePng(image.width, image.height, image.data), built };
 }
-
