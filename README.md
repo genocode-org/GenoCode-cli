@@ -6,6 +6,10 @@
 draw, mutate, breed and morph `.genie` creature files without a browser.
 
 ```
+npm install -g @genocode/cli
+```
+
+```
 genie check Flower.genie            # report errors and warnings
 genie format --write *.genie        # put files in the standard layout
 genie genes Flower.genie            # list a creature's genes
@@ -41,6 +45,11 @@ once to get a `genie` command.
 
 To try a change in `@genocode/core` before it's released, build it in a GenoCode checkout and run
 `npm link ../GenoCode/packages/core` here.
+
+## Releasing
+
+Bump `version` in `packages/cli/package.json`, commit, and push a tag such as `v0.2.0`. The release
+workflow stages the new version on npm, where it waits for approval.
 
 ## License
 

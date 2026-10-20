@@ -1,9 +1,22 @@
 {
   "name": "@genocode/cli",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "The genie command line: check, format, render, mutate, breed and morph.",
+  "keywords": [
+    "genocode",
+    "creatures",
+    "generative art",
+    "cli",
+    "genie"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/genocode-org/GenoCode-cli.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/genocode-org/GenoCode-cli#readme",
+  "bugs": "https://github.com/genocode-org/GenoCode-cli/issues",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,7 +27,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "dependencies": {
     "@genocode/core": "0.9.4",
@@ -22,5 +37,11 @@
   },
   "bin": {
     "genie": "./dist/main.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
