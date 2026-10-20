@@ -27,6 +27,16 @@ export function describeGenes(genes: readonly GeneInfo[]): string[] {
   });
 }
 
+/** Each variant's name, then the genes it sets and their values, indented below it. */
+export function describeVariants(program: CheckResult): string[] {
+  return program.variants.flatMap((v) => [
+    v.name,
+    ...(v.values.size === 0
+      ? ["  (sets no genes)"]
+      : [...v.values].map(([gene, value]) => `  ${gene} = ${formatValue(value)}`)),
+  ]);
+}
+
 export interface RenderOptions {
   /** Width and height of the picture in pixels. */
   size?: number;

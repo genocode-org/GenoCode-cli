@@ -52,6 +52,18 @@ describe("genie", () => {
     expect(io.stdout).toBe("n = 2 in 1..4 step 1  // how many\n");
   });
 
+  it("lists variants and the genes each one sets", () => {
+    const io = memoryIo({
+      "good.genie": GOOD,
+      "family.genie": `${GOOD}\nvariant Many { n = 4 }\n\nvariant Same {}\n`,
+    });
+    expect(run(["variants", "family.genie"], io)).toBe(0);
+    expect(io.stdout).toBe("Many\n  n = 4\nSame\n  (sets no genes)\n");
+    io.stdout = "";
+    expect(run(["variants", "good.genie"], io)).toBe(0);
+    expect(io.stdout).toBe("T has no variants\n");
+  });
+
   it("builds creatures", () => {
     const io = memoryIo({ "good.genie": GOOD });
     expect(run(["build", "good.genie"], io)).toBe(0);

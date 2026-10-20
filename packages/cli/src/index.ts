@@ -1,4 +1,4 @@
-// The genie command line: check, format, genes, build and render, mutate, breed and morph
+// The genie command line: check, format, genes, variants, build and render, mutate, breed and morph
 // creatures, and translate old Pop creatures.
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -19,7 +19,7 @@ import {
 import { banner } from "./banner.js";
 import { PopError, readPopulation } from "./pop.js";
 import { translatePopulation } from "./translate.js";
-import { describeGenes, renderPng } from "./tools.js";
+import { describeGenes, describeVariants, renderPng } from "./tools.js";
 
 export interface Io {
   out(text: string): void;
@@ -49,6 +49,7 @@ Commands:
                               print files in the standard layout; --write saves them,
                               --check only reports files that aren't formatted
   genes <file>                list a creature's genes
+  variants <file>             list a creature's variants and the genes each one sets
   build [--json] <file>       build a creature and report its shapes
   render [--size=N] [--time=T] <file> <out.png>
                               draw a creature as an N×N picture (default 512) at T seconds
@@ -151,6 +152,18 @@ ${USAGE}`);
       const result = check(text);
       if (!report(io, file, result.lines, result.diagnostics)) return 1;
       for (const line of describeGenes(result.genes)) io.out(line + "\n");
+      return 0;
+    }
+
+    case "variants": {
+      const file = files[0]!;
+      const text = read(file);
+      if (text === undefined) return 1;
+      const result = check(text);
+      if (!report(io, file, result.lines, result.diagnostics)) return 1;
+      const lines = describeVariants(result);
+      if (lines.length === 0) io.out(`${result.file.name || file} has no variants\n`);
+      for (const line of lines) io.out(line + "\n");
       return 0;
     }
 
