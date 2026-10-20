@@ -6,12 +6,14 @@ import {
   breed,
   build,
   check,
+  familySpread,
   formatDiagnostic,
   formatText,
   morph,
   mulberry32,
   mutate,
   writeGenes,
+  valuesOf,
   type CheckResult,
   type Diagnostic,
   type LineMap,
@@ -56,8 +58,9 @@ Commands:
                               (default 0, the rest pose); a pattern file is drawn as a
                               ball wearing it
   mutate [--strength=S] [--seed=N] [--lock=a,b] <file> [out.genie]
-                              a variation of a creature: genes move by up to S of their
-                              range (0 to 1, default 0.25)
+                              a variation of a creature: about four genes move, by up to
+                              S of their range (0 to 1, default 0.25), or of how far its
+                              variants spread them
   breed [--seed=N] [--lock=a,b] <a> <b> [out.genie]
                               a child of two creatures, with A's code
   morph [--at=T] <a> <b> [out.genie]
@@ -68,7 +71,8 @@ Commands:
                               creature, with the other members as variants
 
 mutate, breed and morph print the new creature, or write it to out.genie. --seed makes
-the result repeatable, and --lock keeps the named genes as they are.
+the result repeatable, and --lock keeps the named genes as they are. Creatures that say
+\`breed off\` can't be mutated or bred.
 `;
 
 function report(io: Io, file: string, lines: LineMap, diagnostics: Diagnostic[]): boolean {
@@ -250,13 +254,27 @@ ${USAGE}`);
         if (text === undefined) return 1;
         const result = check(text);
         if (!report(io, file, result.lines, result.diagnostics)) return 1;
+        if (command !== "morph" && !result.breedable) {
+          io.err(
+            `genie ${command}: ${file} says \`breed off\`: its children don't keep its look\n`,
+          );
+          return 1;
+        }
         programs.push(result);
       }
       const [a, b] = programs as [CheckResult, CheckResult | undefined];
       let program = a;
       let values;
       if (command === "mutate") {
-        values = mutate(a.genes, undefined, { strength, random, locked });
+        const family = [undefined, ...a.variants.map((v) => v.values)];
+        const spread =
+          family.length > 1
+            ? familySpread(
+                a.genes,
+                family.map((v) => valuesOf(a.genes, v)),
+              )
+            : undefined;
+        values = mutate(a.genes, undefined, { strength, random, locked, spread });
       } else if (command === "breed") {
         values = breed({ genes: a.genes }, { genes: b!.genes }, { random, locked });
       } else {

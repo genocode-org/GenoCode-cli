@@ -16,6 +16,7 @@ genie build Flower.genie            # build a creature and report its shapes (--
 genie render Flower.genie out.png   # draw it (--size=N, default 512; --time=T seconds)
 genie mutate Flower.genie New.genie # a variation (--strength=S, --seed=N, --lock=a,b)
 genie breed A.genie B.genie C.genie # a child of two creatures, with A's code
+                                    # (creatures that say `breed off` are refused)
 genie morph --at=0.3 A.genie B.genie M.genie  # the creature 30% of the way from A to B
 genie translate Cobra.pop Cobra.genie          # a DancerDNA population as GenoCode
 ```

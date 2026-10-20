@@ -153,6 +153,31 @@ describe("genie", () => {
     expect(run(["breed", "a.genie"], io)).toBe(1);
   });
 
+  it("mutates within the spread of a creature's variants", () => {
+    const source =
+      "creature T\ngene a = 5 in 0..100\ngene b = 5 in 0..100\nvariant V { a = 6 }\nlay\n";
+    const io = memoryIo({ "t.genie": source });
+    for (let seed = 0; seed < 20; seed++) {
+      expect(run(["mutate", "--strength=1", `--seed=${seed}`, "t.genie"], io)).toBe(0);
+    }
+    const as = [...io.stdout.matchAll(/gene a = ([\d.]+)/g)].map((m) => Number(m[1]));
+    const bs = [...io.stdout.matchAll(/gene b = ([\d.]+)/g)].map((m) => Number(m[1]));
+    // a's family spreads it 1% of its range, so it moves by at most 10% (the floor); b is the same
+    // in every member, so it moves by at most 10% too
+    for (const v of [...as, ...bs]) expect(Math.abs(v - 5)).toBeLessThanOrEqual(10);
+  });
+
+  it("won't mutate or breed a creature that says breed off", () => {
+    const io = memoryIo({
+      "a.genie": "creature A\nbreed off\ngene n = 0 in 0..10\nlay\n",
+      "b.genie": "creature B\ngene n = 10 in 0..10\nlay\n",
+    });
+    expect(run(["mutate", "a.genie"], io)).toBe(1);
+    expect(io.stderr).toContain("a.genie says `breed off`");
+    expect(run(["breed", "b.genie", "a.genie"], io)).toBe(1);
+    expect(run(["morph", "a.genie", "b.genie"], io)).toBe(0);
+  });
+
   it("morphs between two creatures", () => {
     const io = memoryIo({
       "a.genie": "creature A\ngene n = 0 in 0..10\nlay\n",
