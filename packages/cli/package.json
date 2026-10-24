@@ -32,7 +32,7 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@genocode/core": "0.10.0",
+    "@genocode/core": "0.10.1",
     "@genocode/render": "0.10.0"
   },
   "bin": {
