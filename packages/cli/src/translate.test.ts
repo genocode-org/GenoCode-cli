@@ -190,6 +190,25 @@ extend_cspace(index,[1],c1);
     expect(end!.colour.h).toBeCloseTo(324);
   });
 
+  it("makes a colour space built among drawing into a function too", () => {
+    const tip = (more: string) => `func void tip() {
+data colour a = [<0.1,1,1,0>];
+data colour b = [<0.9,1,1,0>];
+init_cspace([0],a);
+extend_cspace([0],[1],b);
+${more}set_colour(cspace([0],[0.5]));
+lay();
+}`;
+    const t = translate(genome("tip();", tip("")));
+    expect(t.errors).toEqual([]);
+    expect(t.text).toContain("function tip_colours(colour_0, step_1, colour_1, t)");
+    expect(t.text).not.toContain("TODO");
+    expect(build(t.program).shapes[0]!.colour.h).toBeCloseTo(180);
+    // When what it's built from changes, it's left to be done by hand.
+    const changed = translate(genome("tip();", tip("a = [<0.5,1,1,0>];\n")));
+    expect(changed.text).toContain("// TODO: build this colour space by hand");
+  });
+
   it("marks what it can't translate with TODO comments", () => {
     const t = translate(genome("set_texture([2]); orbit([1]); lay();"));
     expect(t.text).toContain("// TODO: choose a texture");

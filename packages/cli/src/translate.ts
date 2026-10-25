@@ -68,6 +68,8 @@ interface Body {
   assigned: Set<string>;
   /** In a colour space builder: the position asked for, and the colour space so far. */
   sampler?: { t: string; from: string; at: string; stops: string };
+  /** Colour spaces built here, among the drawing, which its later colours come from. */
+  spaces?: Map<number, { builder: string; args: string[] }>;
 }
 
 const DEG = 180 / Math.PI;
@@ -233,6 +235,10 @@ class Translator {
   private readonly spaces = new Map<number, { builder: string; args: string[] }>();
   /** The globals that hold builders' arguments, declared at the top. */
   private readonly spaceGlobals: string[] = [];
+  /** Builders made for colour spaces that are built among drawing, written after the parts. */
+  private readonly madeBuilders: PopFunction[] = [];
+  /** Pop names assigned anywhere in the program. */
+  private assignedAnywhere = new Set<string>();
   private readonly todos = new Set<string>();
   /** Helpers the translation uses. */
   private popTurn = false;
@@ -294,6 +300,7 @@ class Translator {
       ...this.base.globals,
       ...this.base.functions.flatMap((f) => f.body),
     ]);
+    this.assignedAnywhere = topBody.assigned;
     const globalScope = new Scope(undefined);
     const lines: string[] = [];
     this.statements(this.base.globals, globalScope, topBody, lines);
@@ -304,6 +311,10 @@ class Translator {
     const definitions: string[] = [];
     for (const f of this.base.functions) {
       if (f.name === "main") continue;
+      definitions.push("", ...this.definition(f, globalScope));
+    }
+    // Found while writing the parts above.
+    for (const f of this.madeBuilders) {
       definitions.push("", ...this.definition(f, globalScope));
     }
 
@@ -623,6 +634,11 @@ class Translator {
         this.todo(out, "`pop()` without a matching `push()` in the same block.");
         continue;
       }
+      const built = body.sampler ? undefined : builtHere(list, i);
+      if (built && this.buildHere(built, scope, body)) {
+        i += built.calls.length - 1;
+        continue;
+      }
       this.statement(s, scope, body, out);
     }
   }
@@ -930,6 +946,56 @@ class Translator {
 
   // ---------- colour spaces ----------
 
+  /**
+   * A colour space built among drawing, as `init_cspace(0, a); extend_cspace(0, step, b)`: it
+   * becomes a builder of its own, and the colours this part takes from it later come from that.
+   * Only when nothing it's built from changes, so the colours can be worked out where they're
+   * used; false otherwise.
+   */
+  private buildHere(built: BuiltHere, scope: Scope, body: Body): boolean {
+    const values = built.calls.flatMap((c) => c.args.slice(1));
+    if (
+      values.some((e) =>
+        namesIn(e).some((n) => body.assigned.has(n) || this.assignedAnywhere.has(n)),
+      )
+    ) {
+      return false;
+    }
+    const key = `@${body.owner ?? ""}:${built.index}`;
+    if (!this.parts.has(key)) {
+      const wanted = `${body.owner ?? "main"}_colours${built.index === 0 ? "" : `_${built.index}`}`;
+      this.parts.set(key, this.allocate(wanted, undefined));
+      this.builders.add(key);
+      const index: PopExpr = { k: "var", name: "index" };
+      const params: PopFunction["params"] = [{ type: "int", name: "index" }];
+      const stmts: PopStmt[] = built.calls.map((c, k) => {
+        const names = k === 0 ? [`colour_0`] : [`step_${k}`, `colour_${k}`];
+        params.push(
+          ...names.map((name) => ({
+            type: name.startsWith("step") ? ("num" as const) : ("colour" as const),
+            name,
+          })),
+        );
+        return {
+          k: "expr",
+          e: {
+            k: "call",
+            name: c.name,
+            args: [index, ...names.map((name): PopExpr => ({ k: "var", name }))],
+          },
+        };
+      });
+      this.madeBuilders.push({ name: key, ret: "void", params, body: stmts });
+    }
+    const args = built.calls.flatMap((c, k) =>
+      (k === 0 ? ["colour"] : ["delta", "colour"]).map(
+        (context, j) => this.expr(c.args[j + 1]!, scope, body, context).code,
+      ),
+    );
+    (body.spaces ??= new Map()).set(built.index, { builder: key, args });
+    return true;
+  }
+
   private sample(space: { builder: string; args: string[] }, t: string): string {
     return `${this.parts.get(space.builder)}(${[...space.args, t].join(", ")})`;
   }
@@ -1140,7 +1206,7 @@ class Translator {
         const index = args[0]!;
         const t = arg(1).code;
         if (index.k === "const" && typeof index.value === "number") {
-          const space = this.spaces.get(index.value);
+          const space = body.spaces?.get(index.value) ?? this.spaces.get(index.value);
           // Pop's colour spaces start out white.
           if (!space) return { code: "white", type: "colour" };
           return { code: this.sample(space, t), type: "colour" };
@@ -1210,6 +1276,48 @@ function toType(value: Code, type: Type): string {
 
 function kindOf(v: PopConst["value"] | undefined): string {
   return Array.isArray(v) ? `vec${v.length}` : typeof v;
+}
+
+/** A colour space built among drawing: `init_cspace` and the `extend_cspace` calls after it. */
+interface BuiltHere {
+  index: number;
+  calls: { name: string; args: PopExpr[] }[];
+}
+
+/** The colour space built from `list[i]` on, if it starts one with a fixed index there. */
+function builtHere(list: PopStmt[], i: number): BuiltHere | undefined {
+  const call = (s: PopStmt | undefined) => (s?.k === "expr" && s.e.k === "call" ? s.e : undefined);
+  const first = call(list[i]);
+  const index = first?.args[0];
+  if (first?.name !== "init_cspace" || first.args.length !== 2) return undefined;
+  if (index?.k !== "const" || typeof index.value !== "number") return undefined;
+  const calls = [first];
+  for (let k = i + 1; ; k++) {
+    const next = call(list[k]);
+    const at = next?.args[0];
+    if (next?.name !== "extend_cspace" || next.args.length !== 3) break;
+    if (at?.k !== "const" || at.value !== index.value) break;
+    calls.push(next);
+  }
+  return { index: index.value, calls };
+}
+
+/** The names an expression reads. */
+function namesIn(e: PopExpr): string[] {
+  switch (e.k) {
+    case "var":
+      return [e.name];
+    case "const":
+      return [];
+    case "neg":
+    case "not":
+      return namesIn(e.a);
+    case "bin":
+    case "logic":
+      return [...namesIn(e.a), ...namesIn(e.b)];
+    case "call":
+      return e.args.flatMap(namesIn);
+  }
 }
 
 function isCall(s: PopStmt, name: string): boolean {
