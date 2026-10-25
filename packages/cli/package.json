@@ -32,8 +32,8 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@genocode/core": "0.10.1",
-    "@genocode/render": "0.10.0"
+    "@genocode/core": "0.11.0",
+    "@genocode/render": "0.12.0"
   },
   "bin": {
     "genie": "dist/main.js"
