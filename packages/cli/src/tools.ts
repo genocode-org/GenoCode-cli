@@ -8,6 +8,8 @@ import {
   type BuildResult,
   type CheckResult,
   type GeneInfo,
+  type MusicInputs,
+  type Value,
 } from "@genocode/core";
 import { rasterize } from "@genocode/render";
 import { encodePng } from "./png.js";
@@ -42,6 +44,12 @@ export interface RenderOptions {
   size?: number;
   /** The value of `time`, in seconds. 0 is the rest pose. */
   time?: number;
+  /** The value of `beat`, 0 on the beat rising towards 1. */
+  beat?: number;
+  /** `music` values, each 0 to 1; the rest are 0, as when no music is playing. */
+  music?: Partial<MusicInputs>;
+  /** Gene values to build with, such as a variant's. Genes left out keep their written values. */
+  genes?: ReadonlyMap<string, Value> | undefined;
 }
 
 /** Builds a checked creature at a moment in time and draws it as a PNG. A pattern file is drawn
@@ -52,12 +60,13 @@ export function renderPng(
 ): { png: Uint8Array; built: BuildResult } {
   if (program.file.kind === "pattern") program = patternOnBall(program);
   const size = options.size ?? 512;
-  const inputs = { time: options.time ?? 0 };
-  const built = build(program, { inputs });
+  const inputs = { time: options.time ?? 0, beat: options.beat ?? 0, music: options.music ?? {} };
+  const genes = options.genes ?? new Map<string, Value>();
+  const built = build(program, { inputs, genes });
   const image = rasterize(built.shapes, {
     width: size,
     height: size,
-    background: buildBackground(program, { inputs }).fill,
+    background: buildBackground(program, { inputs, genes }).fill,
   });
   return { png: encodePng(image.width, image.height, image.data), built };
 }

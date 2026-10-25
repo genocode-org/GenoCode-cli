@@ -7,6 +7,7 @@ import {
   build,
   check,
   familySpread,
+  MUSIC_FIELDS,
   formatDiagnostic,
   formatText,
   morph,
@@ -17,6 +18,7 @@ import {
   type CheckResult,
   type Diagnostic,
   type LineMap,
+  type MusicInputs,
 } from "@genocode/core";
 import { banner } from "./banner.js";
 import { PopError, readPopulation } from "./pop.js";
@@ -53,10 +55,13 @@ Commands:
   genes <file>                list a creature's genes
   variants <file>             list a creature's variants and the genes each one sets
   build [--json] <file>       build a creature and report its shapes
-  render [--size=N] [--time=T] <file> <out.png>
+  render [--size=N] [--time=T] [--beat=B] [--music=bass:0.8,mid_hit:1]
+         [--variant=Name] <file> <out.png>
                               draw a creature as an N×N picture (default 512) at T seconds
-                              (default 0, the rest pose); a pattern file is drawn as a
-                              ball wearing it
+                              (default 0, the rest pose), B of the way through a beat
+                              (0 to 1, default 0) and with the music values given (each 0
+                              to 1; the rest are 0); --variant draws one of its variants.
+                              A pattern file is drawn as a ball wearing it
   mutate [--strength=S] [--seed=N] [--lock=a,b] <file> [out.genie]
                               a variation of a creature: about four genes move, by up to
                               S of their range (0 to 1, default 0.25), or of how far its
@@ -78,6 +83,26 @@ the result repeatable, and --lock keeps the named genes as they are. Creatures t
 function report(io: Io, file: string, lines: LineMap, diagnostics: Diagnostic[]): boolean {
   for (const d of diagnostics) io.err(formatDiagnostic(d, lines, file) + "\n");
   return !diagnostics.some((d) => d.severity === "error");
+}
+
+/**
+ * Reads `--music`, such as `bass:0.8,mid_hit:1`, into music values. Returns what's wrong, if
+ * anything is.
+ */
+export function readMusic(text: string): Partial<MusicInputs> | string {
+  const music: Partial<MusicInputs> = {};
+  for (const item of text.split(",").filter(Boolean)) {
+    const [field, value, extra] = item.split(":");
+    if (!(MUSIC_FIELDS as readonly string[]).includes(field!)) {
+      return `\`${field}\` isn't a music value; they are ${MUSIC_FIELDS.join(", ")}`;
+    }
+    const n = Number(value);
+    if (value === undefined || value === "" || extra !== undefined || !(n >= 0 && n <= 1)) {
+      return `give ${field} a number from 0 to 1, as in ${field}:0.8`;
+    }
+    music[field as keyof MusicInputs] = n;
+  }
+  return music;
 }
 
 /** Runs the command line and returns the exit code. */
@@ -209,11 +234,31 @@ ${USAGE}`);
         io.err("genie render: --time must be a number of seconds, 0 or more\n");
         return 1;
       }
+      const beat = Number(option("beat") ?? 0);
+      if (!(beat >= 0 && beat <= 1)) {
+        io.err("genie render: --beat must be a number from 0 to 1\n");
+        return 1;
+      }
+      const music = readMusic(option("music") ?? "");
+      if (typeof music === "string") {
+        io.err(`genie render: --music: ${music}\n`);
+        return 1;
+      }
       const text = read(file!);
       if (text === undefined) return 1;
       const result = check(text);
       if (!report(io, file!, result.lines, result.diagnostics)) return 1;
-      const { png, built } = renderPng(result, { size, time });
+      const name = option("variant");
+      const variant = name === undefined ? undefined : result.variants.find((v) => v.name === name);
+      if (name !== undefined && !variant) {
+        const names = result.variants.map((v) => v.name);
+        io.err(
+          `genie render: ${file} has no variant \`${name}\`` +
+            (names.length > 0 ? `; it has ${names.join(", ")}\n` : "; it has none\n"),
+        );
+        return 1;
+      }
+      const { png, built } = renderPng(result, { size, time, beat, music, genes: variant?.values });
       report(io, file!, result.lines, built.diagnostics);
       io.write(out, png);
       return built.ok ? 0 : 1;

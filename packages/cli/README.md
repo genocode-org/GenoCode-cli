@@ -14,6 +14,8 @@ genie genes Flower.genie            # list a creature's genes
 genie variants Cobra.genie          # list its variants and the genes each one sets
 genie build Flower.genie            # build a creature and report its shapes (--json for all of them)
 genie render Flower.genie out.png   # draw it (--size=N, default 512; --time=T seconds)
+genie render --variant=Spotty --music=bass:0.8 --beat=0.25 Flower.genie out.png
+                                    # a variant, at a moment of a song
 genie mutate Flower.genie New.genie # a variation (--strength=S, --seed=N, --lock=a,b)
 genie breed A.genie B.genie C.genie # a child of two creatures, with A's code
                                     # (creatures that say `breed off` are refused)
