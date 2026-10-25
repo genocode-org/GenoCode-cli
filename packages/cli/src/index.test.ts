@@ -99,6 +99,42 @@ describe("genie", () => {
     expect(pictures[2]).not.toEqual(pictures[0]);
   });
 
+  it("renders a creature at a moment of a song", () => {
+    // A ball that grows with the bass and moves along with the beat.
+    const io = memoryIo({
+      "song.genie": "creature S\nlay\nmove (1 + beat, 0, 0)\ngrow 1 + music.bass\nlay\n",
+    });
+    const pictures: Uint8Array[] = [];
+    io.write = (_p, data) => {
+      pictures.push(data as Uint8Array);
+    };
+    expect(run(["render", "--size=32", "song.genie", "a.png"], io)).toBe(0);
+    expect(run(["render", "--size=32", "--music=bass:0.8", "song.genie", "b.png"], io)).toBe(0);
+    expect(run(["render", "--size=32", "--beat=0.5", "song.genie", "c.png"], io)).toBe(0);
+    expect(pictures[1]).not.toEqual(pictures[0]);
+    expect(pictures[2]).not.toEqual(pictures[0]);
+    expect(run(["render", "--beat=2", "song.genie", "d.png"], io)).toBe(1);
+    expect(run(["render", "--music=bass:2", "song.genie", "d.png"], io)).toBe(1);
+    expect(run(["render", "--music=drums:1", "song.genie", "d.png"], io)).toBe(1);
+    expect(io.stderr).toContain("`drums` isn't a music value");
+  });
+
+  it("renders a creature's variant", () => {
+    const io = memoryIo({
+      "family.genie":
+        "creature F\ngene n = 1 in 1..4 step 1\nrepeat n {\n  lay\n  move (1, 0, 0)\n}\nvariant Many {\n  n = 4\n}\n",
+    });
+    const pictures: Uint8Array[] = [];
+    io.write = (_p, data) => {
+      pictures.push(data as Uint8Array);
+    };
+    expect(run(["render", "--size=32", "family.genie", "a.png"], io)).toBe(0);
+    expect(run(["render", "--size=32", "--variant=Many", "family.genie", "b.png"], io)).toBe(0);
+    expect(pictures[1]).not.toEqual(pictures[0]);
+    expect(run(["render", "--variant=Few", "family.genie", "c.png"], io)).toBe(1);
+    expect(io.stderr).toBe("genie render: family.genie has no variant `Few`; it has Many\n");
+  });
+
   it("renders a pattern file as a ball wearing it", () => {
     const ripples = (rings: number) =>
       `pattern Ripples\n\nvalue picture {\n  value sin(r * ${rings} * 180) * 0.5 + 0.5\n}\n`;
