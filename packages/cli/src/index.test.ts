@@ -135,6 +135,41 @@ describe("genie", () => {
     expect(io.stderr).toBe("genie render: family.genie has no variant `Few`; it has Many\n");
   });
 
+  it("renders a creature from other sides", () => {
+    // A ball with a smaller one to its right: seen from the right, one hides the other.
+    const io = memoryIo({
+      "pair.genie": "creature P\ncolour red\nlay\nmove (2, 0, 0)\ncolour blue\nlay { grow 0.5 }\n",
+    });
+    const pictures: Uint8Array[] = [];
+    io.write = (_p, data) => {
+      pictures.push(data as Uint8Array);
+    };
+    expect(run(["render", "--size=32", "--view=0,0", "pair.genie", "a.png"], io)).toBe(0);
+    expect(run(["render", "--size=32", "--view=front", "pair.genie", "b.png"], io)).toBe(0);
+    expect(run(["render", "--size=32", "--view=90,0", "pair.genie", "c.png"], io)).toBe(0);
+    expect(pictures[1]).toEqual(pictures[0]);
+    expect(pictures[2]).not.toEqual(pictures[0]);
+    for (const bad of ["--view=up", "--view=10", "--view=0,120", "--views=front,up"]) {
+      expect(run(["render", bad, "pair.genie", "d.png"], io)).toBe(1);
+    }
+    expect(run(["render", "--view=front", "--views", "pair.genie", "d.png"], io)).toBe(1);
+    expect(io.stderr).toContain("give --view or --views, not both");
+  });
+
+  it("draws several views side by side", () => {
+    const io = memoryIo({ "good.genie": GOOD });
+    const pictures: Uint8Array[] = [];
+    io.write = (_p, data) => {
+      pictures.push(data as Uint8Array);
+    };
+    // A PNG's width is the 4 bytes after its signature and the IHDR header.
+    const width = (png: Uint8Array) => new DataView(png.buffer, png.byteOffset).getUint32(16);
+    expect(run(["render", "--size=64", "--views", "good.genie", "a.png"], io)).toBe(0);
+    expect(run(["render", "--size=64", "--views=front,top", "good.genie", "b.png"], io)).toBe(0);
+    expect(width(pictures[0]!)).toBe(5 * 64 + 4 * 2);
+    expect(width(pictures[1]!)).toBe(2 * 64 + 2);
+  });
+
   it("renders a pattern file as a ball wearing it", () => {
     const ripples = (rings: number) =>
       `pattern Ripples\n\nvalue picture {\n  value sin(r * ${rings} * 180) * 0.5 + 0.5\n}\n`;

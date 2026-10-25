@@ -23,7 +23,14 @@ import {
 import { banner } from "./banner.js";
 import { PopError, readPopulation } from "./pop.js";
 import { translatePopulation } from "./translate.js";
-import { describeGenes, describeVariants, renderPng } from "./tools.js";
+import {
+  describeGenes,
+  describeVariants,
+  readView,
+  renderPng,
+  SHEET_VIEWS,
+  VIEWS,
+} from "./tools.js";
 
 export interface Io {
   out(text: string): void;
@@ -56,11 +63,16 @@ Commands:
   variants <file>             list a creature's variants and the genes each one sets
   build [--json] <file>       build a creature and report its shapes
   render [--size=N] [--time=T] [--beat=B] [--music=bass:0.8,mid_hit:1]
-         [--variant=Name] <file> <out.png>
+         [--variant=Name] [--view=V | --views[=V,V…]] <file> <out.png>
                               draw a creature as an N×N picture (default 512) at T seconds
                               (default 0, the rest pose), B of the way through a beat
                               (0 to 1, default 0) and with the music values given (each 0
                               to 1; the rest are 0); --variant draws one of its variants.
+                              --view sees it from yaw,pitch in degrees (yaw 90 is its right
+                              side, 180 the back; pitch 90 looks down from above) or a named
+                              view: front, right, back, left, top, bottom, three-quarter.
+                              --views draws several named views side by side, N×N each
+                              (default front, right, back, top, three-quarter).
                               A pattern file is drawn as a ball wearing it
   mutate [--strength=S] [--seed=N] [--lock=a,b] <file> [out.genie]
                               a variation of a creature: about four genes move, by up to
@@ -244,6 +256,33 @@ ${USAGE}`);
         io.err(`genie render: --music: ${music}\n`);
         return 1;
       }
+      const one = option("view");
+      const several = flags.has("--views") ? (option("views") ?? SHEET_VIEWS.join(",")) : undefined;
+      if (one !== undefined && several !== undefined) {
+        io.err("genie render: give --view or --views, not both\n");
+        return 1;
+      }
+      const views = [];
+      for (const v of one !== undefined ? [one] : (several?.split(",") ?? [])) {
+        const view = one !== undefined ? readView(v) : VIEWS[v];
+        if (view === undefined) {
+          io.err(
+            `genie render: --views: \`${v}\` isn't a view; they are ${Object.keys(VIEWS).join(", ")}\n`,
+          );
+          return 1;
+        }
+        if (typeof view === "string") {
+          io.err(`genie render: --view: ${view}\n`);
+          return 1;
+        }
+        views.push(view);
+      }
+      if (size * views.length > 16384) {
+        io.err(
+          `genie render: ${views.length} views of ${size}×${size} make too wide a picture; give a smaller --size\n`,
+        );
+        return 1;
+      }
       const text = read(file!);
       if (text === undefined) return 1;
       const result = check(text);
@@ -258,7 +297,14 @@ ${USAGE}`);
         );
         return 1;
       }
-      const { png, built } = renderPng(result, { size, time, beat, music, genes: variant?.values });
+      const { png, built } = renderPng(result, {
+        size,
+        time,
+        beat,
+        music,
+        genes: variant?.values,
+        ...(views.length > 0 ? { views } : {}),
+      });
       report(io, file!, result.lines, built.diagnostics);
       io.write(out, png);
       return built.ok ? 0 : 1;
