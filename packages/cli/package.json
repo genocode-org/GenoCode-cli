@@ -1,6 +1,6 @@
 {
   "name": "@genocode/cli",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "The genie command line: check, format, render, mutate, breed and morph.",
   "keywords": [
     "genocode",
