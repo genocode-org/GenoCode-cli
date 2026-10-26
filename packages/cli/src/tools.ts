@@ -1,4 +1,5 @@
-// Listing genes and drawing creatures to PNG, for `genie genes` and `genie render`.
+// Listing genes and colour jumps, and drawing creatures to PNG, for `genie genes`, `genie jumps`
+// and `genie render`.
 
 import {
   build,
@@ -7,6 +8,7 @@ import {
   patternOnBall,
   type BuildResult,
   type CheckResult,
+  type ColourJump,
   type GeneInfo,
   type MusicInputs,
   type Value,
@@ -37,6 +39,27 @@ export function describeVariants(program: CheckResult): string[] {
       ? ["  (sets no genes)"]
       : [...v.values].map(([gene, value]) => `  ${gene} = ${formatValue(value)}`)),
   ]);
+}
+
+/**
+ * One line for each morph between neighbours in the family loop where colours jump: how many
+ * times, the biggest leap, and where the first is.
+ */
+export function describeJumps(program: CheckResult, jumps: readonly ColourJump[]): string[] {
+  const names = [program.file.name || "the creature", ...program.variants.map((v) => v.name)];
+  const lines: string[] = [];
+  for (let from = 0; from < names.length; from++) {
+    const here = jumps.filter((j) => j.from === from);
+    if (here.length === 0) continue;
+    const to = names[here[0]!.to]!;
+    const most = Math.max(...here.map((j) => j.degrees));
+    const first = Math.min(...here.map((j) => j.t));
+    const times = here.length === 1 ? "once" : `${here.length} times`;
+    lines.push(
+      `${names[from]} to ${to}: colours jump ${times}, by up to ${Math.round(most)}°, first ${Math.round(first * 100)}% of the way`,
+    );
+  }
+  return lines;
 }
 
 export interface RenderOptions {

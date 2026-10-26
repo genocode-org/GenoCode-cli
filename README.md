@@ -20,6 +20,7 @@ genie mutate Flower.genie New.genie # a variation (--strength=S, --seed=N, --loc
 genie breed A.genie B.genie C.genie # a child of two creatures, with A's code
                                     # (creatures that say `breed off` are refused)
 genie morph --at=0.3 A.genie B.genie M.genie  # the creature 30% of the way from A to B
+genie jumps Cobra.genie             # where colours jump as it morphs through its variants
 genie translate Cobra.pop Cobra.genie          # a DancerDNA population as GenoCode
 ```
 
