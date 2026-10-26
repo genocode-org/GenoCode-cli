@@ -1,11 +1,12 @@
 // The genie command line: check, format, genes, variants, build and render, mutate, breed and morph
-// creatures, and translate old Pop creatures.
+// creatures, find colours that jump while they morph, and translate old Pop creatures.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import {
   breed,
   build,
   check,
+  colourJumps,
   familySpread,
   MUSIC_FIELDS,
   formatDiagnostic,
@@ -25,6 +26,7 @@ import { PopError, readPopulation } from "./pop.js";
 import { translatePopulation } from "./translate.js";
 import {
   describeGenes,
+  describeJumps,
   describeVariants,
   readView,
   renderPng,
@@ -82,6 +84,8 @@ Commands:
                               a child of two creatures, with A's code
   morph [--at=T] <a> <b> [out.genie]
                               the creature T of the way from A to B (0 to 1, default 0.5)
+  jumps <files…>              find where colours jump while a creature morphs through its
+                              variants, as blends whose hues pass opposite each other do
 
   translate <file.pop> [out.genie]
                               a rough GenoCode version of a DancerDNA population: one
@@ -206,6 +210,25 @@ ${USAGE}`);
       if (lines.length === 0) io.out(`${result.file.name || file} has no variants\n`);
       for (const line of lines) io.out(line + "\n");
       return 0;
+    }
+
+    case "jumps": {
+      let clean = true;
+      for (const file of files) {
+        const text = read(file);
+        if (text === undefined) return 1;
+        const result = check(text);
+        if (!report(io, file, result.lines, result.diagnostics)) return 1;
+        if (result.variants.length === 0) {
+          io.out(`${file}: no variants to morph through\n`);
+          continue;
+        }
+        const lines = describeJumps(result, colourJumps(result));
+        if (lines.length === 0) io.out(`${file}: no colour jumps\n`);
+        for (const line of lines) io.out(`${file}: ${line}\n`);
+        clean &&= lines.length === 0;
+      }
+      return clean ? 0 : 1;
     }
 
     case "build": {

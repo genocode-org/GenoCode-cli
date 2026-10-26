@@ -64,6 +64,27 @@ describe("genie", () => {
     expect(io.stdout).toBe("T has no variants\n");
   });
 
+  it("finds colours that jump while a creature morphs", () => {
+    // Beads shading the short way from red to a hue `gap` on, which switches sides at 180.
+    const beads = (colour: string) =>
+      `creature Beads\ngene gap = 150 in 0..360\nrepeat 8 as i {\n  colour ${colour}\n  lay\n  forward 1.5\n}\n\nvariant Wide {\n  gap = 210\n}\n`;
+    const io = memoryIo({
+      "mix.genie": beads("mix(hsv(0, 1, 1), hsv(gap, 1, 1), i / 7)"),
+      "hues.genie": beads("hsv(mix(0, gap, i / 7), 1, 1)"),
+      "good.genie": GOOD,
+    });
+    expect(run(["jumps", "mix.genie"], io)).toBe(1);
+    expect(io.stdout).toBe(
+      "mix.genie: Beads to Wide: colours jump once, by up to 154°, first 50% of the way\n" +
+        "mix.genie: Wide to Beads: colours jump once, by up to 154°, first 50% of the way\n",
+    );
+    io.stdout = "";
+    expect(run(["jumps", "hues.genie", "good.genie"], io)).toBe(0);
+    expect(io.stdout).toBe(
+      "hues.genie: no colour jumps\ngood.genie: no variants to morph through\n",
+    );
+  });
+
   it("builds creatures", () => {
     const io = memoryIo({ "good.genie": GOOD });
     expect(run(["build", "good.genie"], io)).toBe(0);
