@@ -25,6 +25,7 @@ import { banner } from "./banner.js";
 import { PopError, readPopulation } from "./pop.js";
 import { translatePopulation } from "./translate.js";
 import {
+  describeCheck,
   describeGenes,
   describeJumps,
   describeVariants,
@@ -57,7 +58,8 @@ export const nodeIo: Io = {
 const USAGE = `Usage: genie <command> [options] <files…>
 
 Commands:
-  check <files…>              report errors and warnings
+  check <files…>              report errors and warnings, then OK and what each file
+                              holds (genes, parts, variants), or how many problems
   format [--write | --check] <files…>
                               print files in the standard layout; --write saves them,
                               --check only reports files that aren't formatted
@@ -157,7 +159,12 @@ ${USAGE}`);
           continue;
         }
         const result = check(text);
-        if (!report(io, file, result.lines, result.diagnostics)) ok = false;
+        if (report(io, file, result.lines, result.diagnostics)) {
+          io.out(describeCheck(file, result) + "\n");
+        } else {
+          io.err(describeCheck(file, result) + "\n");
+          ok = false;
+        }
       }
       return ok ? 0 : 1;
     }

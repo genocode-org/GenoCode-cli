@@ -1,5 +1,5 @@
-// Listing genes and colour jumps, and drawing creatures to PNG, for `genie genes`, `genie jumps`
-// and `genie render`.
+// Summing up checked files, listing genes and colour jumps, and drawing creatures to PNG, for
+// `genie check`, `genie genes`, `genie jumps` and `genie render`.
 
 import {
   build,
@@ -15,6 +15,30 @@ import {
 } from "@genocode/core";
 import { rasterize, type View } from "@genocode/render";
 import { encodePng } from "./png.js";
+
+function count(n: number, thing: string): string {
+  return `${n} ${thing}${n === 1 ? "" : "s"}`;
+}
+
+/**
+ * The line `genie check` ends each file with: OK and what the file holds, such as
+ * `Flower.genie: OK — creature Flower, 5 genes, 2 parts, 3 variants, animated`, or how many
+ * errors and warnings it found.
+ */
+export function describeCheck(file: string, program: CheckResult): string {
+  const errors = program.diagnostics.filter((d) => d.severity === "error").length;
+  const warnings = program.diagnostics.length - errors;
+  if (errors > 0) {
+    return `${file}: ${count(errors, "error")}${warnings > 0 ? `, ${count(warnings, "warning")}` : ""}`;
+  }
+  const holds = [`${program.file.kind} ${program.file.name}`];
+  if (program.genes.length > 0) holds.push(count(program.genes.length, "gene"));
+  if (program.parts.size > 0) holds.push(count(program.parts.size, "part"));
+  if (program.variants.length > 0) holds.push(count(program.variants.length, "variant"));
+  if (program.live) holds.push("animated");
+  if (!program.breedable) holds.push("breed off");
+  return `${file}: OK${warnings > 0 ? ` with ${count(warnings, "warning")}` : ""} — ${holds.join(", ")}`;
+}
 
 /** One line per gene: its full name, value, range and description. */
 export function describeGenes(genes: readonly GeneInfo[]): string[] {
