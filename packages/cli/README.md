@@ -8,7 +8,7 @@ npm install -g @genocode/cli
 ```
 
 ```
-genie check Flower.genie            # report errors and warnings
+genie check Flower.genie            # report problems, or OK and what the file holds
 genie format --write *.genie        # put files in the standard layout
 genie genes Flower.genie            # list a creature's genes
 genie variants Cobra.genie          # list its variants and the genes each one sets

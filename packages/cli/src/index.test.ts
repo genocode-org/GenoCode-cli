@@ -33,7 +33,12 @@ describe("genie", () => {
     const io = memoryIo({ "good.genie": GOOD, "bad.genie": "creature B\nforward red\n" });
     expect(run(["check", "good.genie"], io)).toBe(0);
     expect(run(["check", "good.genie", "bad.genie"], io)).toBe(1);
-    expect(io.stderr).toBe("bad.genie:2:9: error: `forward` needs a number, not a colour.\n");
+    expect(io.stdout).toBe(
+      "good.genie: OK — creature T, 1 gene\ngood.genie: OK — creature T, 1 gene\n",
+    );
+    expect(io.stderr).toBe(
+      "bad.genie:2:9: error: `forward` needs a number, not a colour.\nbad.genie: 1 error\n",
+    );
   });
 
   it("formats to stdout, checks and writes", () => {
