@@ -51,7 +51,7 @@ export function describeGenes(genes: readonly GeneInfo[]): string[] {
       if (g.step !== undefined) range += ` step ${g.step}`;
       if (g.log) range += " log";
     }
-    return `${g.fullName} = ${formatValue(g.value)}${range}${g.description ? `  // ${g.description}` : ""}`;
+    return `${g.fullName} = ${formatValue(g.value)}${range}${g.description ? ` // ${g.description}` : ""}`;
   });
 }
 

@@ -24,7 +24,7 @@ describe("describeCheck", () => {
 
 describe("describeGenes", () => {
   it("lists genes with their ranges and descriptions", () => {
-    expect(describeGenes(check(GOOD).genes)).toEqual(["n = 2 in 1..4 step 1  // how many"]);
+    expect(describeGenes(check(GOOD).genes)).toEqual(["n = 2 in 1..4 step 1 // how many"]);
   });
 });
 
