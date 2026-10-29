@@ -61,12 +61,12 @@ data colour skin = [<0.5,0.6,0.7,0>]:[<0,0.4,0.5,0>]:[<0.99999,1,1,0>];
 yaw(twist); set_colour(skin); uscale(iton(petals)); scale(stretch); lay();`),
     );
     expect(t.errors).toEqual([]);
-    expect(t.text).toContain("gene twist   = 30.5 in 0..90");
-    expect(t.text).toContain("gene petals  = 7    in 3..12 step 1");
+    expect(t.text).toContain("gene twist = 30.5 in 0..90");
+    expect(t.text).toContain("gene petals = 7 in 3..12 step 1");
     expect(t.text).toContain("gene stretch = (1, 2, 3) in (0, 0, 0)..(4, 4, 4)");
     // Hue in degrees, and Pop's alpha left out: its shapes are drawn solid.
     expect(t.text).toMatch(
-      /gene skin += hsv\(180, 0\.6, 0\.7\) in hsv\(0, 0\.4, 0\.5\)\.\.hsv\(359\.996, 1, 1\)/,
+      /gene skin = hsv\(180, 0\.6, 0\.7\) in hsv\(0, 0\.4, 0\.5\)\.\.hsv\(359\.996, 1, 1\)/,
     );
   });
 

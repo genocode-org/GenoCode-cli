@@ -54,7 +54,7 @@ describe("genie", () => {
   it("lists genes", () => {
     const io = memoryIo({ "good.genie": GOOD });
     expect(run(["genes", "good.genie"], io)).toBe(0);
-    expect(io.stdout).toBe("n = 2 in 1..4 step 1  // how many\n");
+    expect(io.stdout).toBe("n = 2 in 1..4 step 1 // how many\n");
   });
 
   it("lists variants and the genes each one sets", () => {
