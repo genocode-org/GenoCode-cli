@@ -147,7 +147,7 @@ export function renderPng(
   const background = buildBackground(program, { inputs, genes }).fill;
   const views = options.views ?? [undefined];
   const images = views.map((view) =>
-    rasterize(built.shapes, { width: size, height: size, background, view }),
+    rasterize(built.shapes, { width: size, height: size, background, view, focus: built.focus }),
   );
   // Views side by side, with a see-through gap between them.
   const gap = Math.max(2, Math.round(size / 64));
