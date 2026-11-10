@@ -1,6 +1,6 @@
 {
   "name": "@genocode/cli",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "The genie command line: check, format, render, mutate, breed and morph.",
   "keywords": [
     "genocode",
@@ -32,8 +32,8 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@genocode/core": "0.11.6",
-    "@genocode/render": "0.13.4"
+    "@genocode/core": "0.11.7",
+    "@genocode/render": "0.13.5"
   },
   "bin": {
     "genie": "dist/main.js"
