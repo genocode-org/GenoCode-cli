@@ -145,6 +145,29 @@ describe("genie", () => {
     expect(io.stderr).toContain("`drums` isn't a music value");
   });
 
+  it("takes each music value within its own range", () => {
+    // A ball in the colour of the note that's sounding, leaning to the side the sound comes from.
+    const io = memoryIo({
+      "note.genie":
+        "creature N\nyaw 40 * music.balance\ncolour hsv(music.note, 1, 1)\nlay\nforward 1\nlay\n",
+    });
+    const pictures: Uint8Array[] = [];
+    io.write = (_p, data) => {
+      pictures.push(data as Uint8Array);
+    };
+    expect(run(["render", "--size=32", "note.genie", "a.png"], io)).toBe(0);
+    expect(run(["render", "--size=32", "--music=note:240", "note.genie", "b.png"], io)).toBe(0);
+    expect(run(["render", "--size=32", "--music=balance:-1", "note.genie", "c.png"], io)).toBe(0);
+    expect(pictures[1]).not.toEqual(pictures[0]);
+    expect(pictures[2]).not.toEqual(pictures[0]);
+    expect(run(["render", "--music=note:400", "note.genie", "d.png"], io)).toBe(1);
+    expect(io.stderr).toContain("give note a number from 0 to 360, as in note:288");
+    expect(run(["render", "--music=balance:-2", "note.genie", "d.png"], io)).toBe(1);
+    expect(io.stderr).toContain("give balance a number from -1 to 1");
+    expect(run(["render", "--music=drop:1.5", "note.genie", "d.png"], io)).toBe(1);
+    expect(io.stderr).toContain("give drop a number from 0 to 1, as in drop:0.8");
+  });
+
   it("renders a creature's variant", () => {
     const io = memoryIo({
       "family.genie":

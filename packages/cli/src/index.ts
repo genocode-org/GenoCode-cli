@@ -9,6 +9,7 @@ import {
   colourJumps,
   familySpread,
   MUSIC_FIELDS,
+  musicRange,
   formatDiagnostic,
   formatText,
   morph,
@@ -70,8 +71,10 @@ Commands:
          [--variant=Name] [--view=V | --views[=V,V…]] <file> <out.png>
                               draw a creature as an N×N picture (default 512) at T seconds
                               (default 0, the rest pose), B of the way through a beat
-                              (0 to 1, default 0) and with the music values given (each 0
-                              to 1; the rest are 0); --variant draws one of its variants.
+                              (0 to 1, default 0) and with the music values given (most
+                              run from 0 to 1, music.note and music.key from 0 to 360,
+                              music.balance from -1 to 1; the rest are 0); --variant draws
+                              one of its variants.
                               --view sees it from yaw,pitch in degrees (yaw 90 is its right
                               side, 180 the back; pitch 90 looks down from above) or a named
                               view: front, right, back, left, top, bottom, three-quarter.
@@ -104,7 +107,7 @@ function report(io: Io, file: string, lines: LineMap, diagnostics: Diagnostic[])
 }
 
 /**
- * Reads `--music`, such as `bass:0.8,mid_hit:1`, into music values. Returns what's wrong, if
+ * Reads `--music`, such as `bass:0.8,note:90`, into music values. Returns what's wrong, if
  * anything is.
  */
 export function readMusic(text: string): Partial<MusicInputs> | string {
@@ -114,9 +117,11 @@ export function readMusic(text: string): Partial<MusicInputs> | string {
     if (!(MUSIC_FIELDS as readonly string[]).includes(field!)) {
       return `\`${field}\` isn't a music value; they are ${MUSIC_FIELDS.join(", ")}`;
     }
+    // Most music values run from 0 to 1; a few (the note's hue, the balance) have their own range.
+    const [least, most] = musicRange(field as keyof MusicInputs);
     const n = Number(value);
-    if (value === undefined || value === "" || extra !== undefined || !(n >= 0 && n <= 1)) {
-      return `give ${field} a number from 0 to 1, as in ${field}:0.8`;
+    if (value === undefined || value === "" || extra !== undefined || !(n >= least && n <= most)) {
+      return `give ${field} a number from ${least} to ${most}, as in ${field}:${0.8 * most}`;
     }
     music[field as keyof MusicInputs] = n;
   }
