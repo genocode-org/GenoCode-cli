@@ -93,7 +93,7 @@ export interface RenderOptions {
   time?: number;
   /** The value of `beat`, 0 on the beat rising towards 1. */
   beat?: number;
-  /** `music` values, each 0 to 1; the rest are 0, as when no music is playing. */
+  /** `music` values, each within its own range (most 0 to 1); the rest are 0, as when no music is playing. */
   music?: Partial<MusicInputs>;
   /** Gene values to build with, such as a variant's. Genes left out keep their written values. */
   genes?: ReadonlyMap<string, Value> | undefined;
