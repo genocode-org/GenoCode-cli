@@ -2,6 +2,8 @@
 // creatures, find colours that jump while they morph, and translate old Pop creatures.
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import {
   breed,
   build,
@@ -95,11 +97,40 @@ Commands:
   translate <file.pop> [out.genie]
                               a rough GenoCode version of a DancerDNA population: one
                               creature, with the other members as variants
+  --version                   print genie's version, and the versions of the GenoCode
+                              language and of the renderer that draws its pictures
 
 mutate, breed and morph print the new creature, or write it to out.genie. --seed makes
 the result repeatable, and --lock keeps the named genes as they are. Creatures that say
 \`breed off\` can't be mutated or bred.
 `;
+
+/** The version in a package.json file, or "unknown" if it can't be read. */
+function versionIn(file: string | URL): string {
+  try {
+    return (JSON.parse(readFileSync(file, "utf8")) as { version?: string }).version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+/** genie's version, and those of the language (@genocode/core) and renderer (@genocode/render) it uses. */
+export function versions(): { genie: string; core: string; render: string } {
+  // Neither package exports its package.json: find it next to the code it does export.
+  const require = createRequire(import.meta.url);
+  const of = (name: string): string => {
+    try {
+      return versionIn(join(dirname(require.resolve(name)), "..", "package.json"));
+    } catch {
+      return "unknown";
+    }
+  };
+  return {
+    genie: versionIn(new URL("../package.json", import.meta.url)),
+    core: of("@genocode/core"),
+    render: of("@genocode/render"),
+  };
+}
 
 function report(io: Io, file: string, lines: LineMap, diagnostics: Diagnostic[]): boolean {
   for (const d of diagnostics) io.err(formatDiagnostic(d, lines, file) + "\n");
@@ -148,6 +179,13 @@ export function run(argv: string[], io: Io = nodeIo): number {
     io.out(`${banner(io.colour ?? false)}
 ${USAGE}`);
     return command === undefined ? 1 : 0;
+  }
+  if (command === "--version" || command === "-v" || command === "version") {
+    const v = versions();
+    io.out(
+      `genie ${v.genie}\nlanguage ${v.core} (@genocode/core)\nrenderer ${v.render} (@genocode/render)\n`,
+    );
+    return 0;
   }
   if (files.length === 0) {
     io.err(`genie ${command}: no files given\n\n${USAGE}`);
