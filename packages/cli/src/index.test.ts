@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { run, type Io } from "./index.js";
 
 function memoryIo(
@@ -238,6 +239,22 @@ describe("genie", () => {
     io.colour = true;
     expect(run(["help"], io)).toBe(0);
     expect(io.stdout).toContain("[38;2;");
+  });
+
+  it("prints its version and the language version, like other command lines", () => {
+    const own = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+      version: string;
+    };
+    for (const flag of ["--version", "-v", "version"]) {
+      const io = memoryIo({});
+      expect(run([flag], io)).toBe(0);
+      expect(io.stdout).toMatch(
+        new RegExp(
+          `^genie ${own.version.replace(/\./g, "\\.")}\nlanguage \\d+\\.\\d+\\.\\d+ \\(@genocode/core\\)\nrenderer \\d+\\.\\d+\\.\\d+ \\(@genocode/render\\)\n$`,
+        ),
+      );
+      expect(io.stderr).toBe("");
+    }
   });
 
   it("explains how to use it", () => {

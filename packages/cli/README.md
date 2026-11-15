@@ -22,6 +22,7 @@ genie breed A.genie B.genie C.genie # a child of two creatures, with A's code
 genie morph --at=0.3 A.genie B.genie M.genie  # the creature 30% of the way from A to B
 genie jumps Cobra.genie             # where colours jump as it morphs through its variants
 genie translate Cobra.pop Cobra.genie          # a DancerDNA population as GenoCode
+genie --version                     # genie's version, and the language and renderer it uses
 ```
 
 `genie translate` turns a DancerDNA (1999) population file into one GenoCode creature: the first
