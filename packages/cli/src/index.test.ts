@@ -290,6 +290,22 @@ describe("genie", () => {
     expect(run(["breed", "a.genie"], io)).toBe(1);
   });
 
+  it("warns when two creatures share no genes, as the child is then the first unchanged", () => {
+    const io = memoryIo({
+      "a.genie": "creature A\ngene n = 0 in 0..10\nlay\n",
+      "b.genie": "creature B\ngene m = 10 in 0..10\nlay\n",
+      "c.genie": "creature C\ngene n = 10 in 0..10\nlay\n",
+    });
+    expect(run(["breed", "--seed=1", "a.genie", "b.genie"], io)).toBe(0);
+    expect(io.stderr).toContain(
+      "a.genie and b.genie share no genes, so the child is a.genie unchanged",
+    );
+    expect(io.stdout).toMatch(/gene n = 0 +in 0..10/);
+    const io2 = memoryIo({ "a.genie": io.files["a.genie"]!, "c.genie": io.files["c.genie"]! });
+    expect(run(["breed", "--seed=1", "a.genie", "c.genie"], io2)).toBe(0);
+    expect(io2.stderr).not.toContain("share no genes");
+  });
+
   it("mutates within the spread of a creature's variants", () => {
     const source =
       "creature T\ngene a = 5 in 0..100\ngene b = 5 in 0..100\nvariant V { a = 6 }\nlay\n";

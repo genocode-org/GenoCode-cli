@@ -88,7 +88,8 @@ Commands:
                               S of their range (0 to 1, default 0.25), or of how far its
                               variants spread them
   breed [--seed=N] [--lock=a,b] <a> <b> [out.genie]
-                              a child of two creatures, with A's code
+                              a child of two creatures, with A's code: genes with the same
+                              name and kind in both are mixed, the rest keep A's values
   morph [--at=T] <a> <b> [out.genie]
                               the creature T of the way from A to B (0 to 1, default 0.5)
   jumps <files…>              find where colours jump while a creature morphs through its
@@ -440,6 +441,13 @@ ${USAGE}`);
             : undefined;
         values = mutate(a.genes, undefined, { strength, random, locked, spread });
       } else if (command === "breed") {
+        // B passes on only the genes it shares with A by full name and kind.
+        const kinds = new Map(b!.genes.map((g) => [g.fullName, g.kind]));
+        if (!a.genes.some((g) => kinds.get(g.fullName) === g.kind)) {
+          io.err(
+            `genie breed: warning: ${files[0]} and ${files[1]} share no genes, so the child is ${files[0]} unchanged\n`,
+          );
+        }
         values = breed({ genes: a.genes }, { genes: b!.genes }, { random, locked });
       } else {
         const m = morph({ genes: a.genes }, { genes: b!.genes }, at);
