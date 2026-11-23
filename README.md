@@ -11,7 +11,7 @@ script, with no browser.
 
 <sub>`genie render --views Medusa.genie medusa.png`</sub>
 
-To write and watch creatures in the browser, use the [GenoCode app](https://genocode.piorek.co.za).
+To write and watch creatures in the browser, use the [GenoCode app](https://genocode.piorek.co.za/app/).
 New to the language? Start with [Getting started](https://genocode.piorek.co.za/docs/).
 
 ## Install
