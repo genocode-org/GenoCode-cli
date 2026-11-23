@@ -7,7 +7,7 @@ script, with no browser.
 
 ![A Medusa jellyfish drawn by genie from five sides](https://raw.githubusercontent.com/genocode-org/GenoCode-cli/main/docs/medusa-views.png)
 
-To write and watch creatures in the browser, use the [GenoCode app](https://genocode.piorek.co.za).
+To write and watch creatures in the browser, use the [GenoCode app](https://genocode.piorek.co.za/app/).
 
 ## Install
 
